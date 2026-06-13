@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "8001:8000"
     env_file:
       - .env
     depends_on:
@@ -19,9 +19,9 @@ services:
     environment:
       POSTGRES_DB: whatsapp_clone
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_password
+      POSTGRES_PASSWORD: guirgis
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   redis:
     image: redis:7
