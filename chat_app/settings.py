@@ -1,25 +1,33 @@
+from datetime import timedelta
 from pathlib import Path
 import os
-from datetime import timedelta
+
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load env (works in local + docker if file exists)
+BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# -------------------
-# CORE
-# -------------------
-SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-default")
-DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["*"]
+def env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
 
 
-# -------------------
-# APPS
-# -------------------
+def env_list(name, default=None):
+    value = os.getenv(name)
+    if not value:
+        return default or []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-development-secret-key")
+DEBUG = env_bool("DEBUG", False)
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
+
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -27,22 +35,20 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
-    # third party
     "rest_framework",
     "rest_framework_simplejwt",
-
-    # local apps
+    "corsheaders",
+    "drf_spectacular",
+    "channels",
     "authentication",
     "chat",
 ]
 
 
-# -------------------
-# MIDDLEWARE
-# -------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -52,17 +58,11 @@ MIDDLEWARE = [
 ]
 
 
-# -------------------
-# URLS / WSGI / ASGI
-# -------------------
 ROOT_URLCONF = "chat_app.urls"
 WSGI_APPLICATION = "chat_app.wsgi.application"
 ASGI_APPLICATION = "chat_app.asgi.application"
 
 
-# -------------------
-# TEMPLATES
-# -------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -79,80 +79,21 @@ TEMPLATES = [
 ]
 
 
-# -------------------
-# DATABASE (DOCKER POSTGRES)
-# -------------------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST", "db"),
+        "NAME": os.getenv("DB_NAME", "whatsapp_clone"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "localhost"),
         "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
 
-# -------------------
-# PASSWORD VALIDATION
-# -------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
-
-
-# -------------------
-# INTERNATIONALIZATION
-# -------------------
-LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
-USE_I18N = True
-USE_TZ = True
-
-
-# -------------------
-# STATIC / MEDIA
-# -------------------
-STATIC_URL = "/static/"
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
-
-# -------------------
-# DEFAULT AUTO FIELD
-# -------------------
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-
-# -------------------
-# DRF + JWT
-# -------------------
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
-    "DEFAULT_RENDERER_CLASSES": (
-        "rest_framework.renderers.JSONRenderer",
-        "rest_framework.renderers.BrowsableAPIRenderer",
-    ),
-}
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-}
-
-
-# -------------------
-# REDIS (for future channels / cache)
-# -------------------
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = os.getenv("REDIS_PORT", "6379")

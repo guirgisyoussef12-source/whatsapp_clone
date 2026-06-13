@@ -1,9 +1,9 @@
-version: "3.9"
-
 services:
   web:
-    build: .
-    command: gunicorn chat_app.wsgi:application --bind 0.0.0.0:8000
+    build:
+      context: .
+      dockerfile: dockerfile
+    command: daphne -b 0.0.0.0 -p 8000 chat_app.asgi:application
     volumes:
       - .:/app
     ports:
@@ -22,8 +22,13 @@ services:
       POSTGRES_PASSWORD: guirgis
     ports:
       - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+
+volumes:
+  postgres_data:
