@@ -129,6 +129,29 @@ class MessageViewSet(viewsets.ModelViewSet):
         message.save(update_fields=["is_read"])
         return Response(self.get_serializer(message).data)
 
+    @action(detail=False, methods=["post"], url_path="mark_read_bulk")
+    def mark_read_bulk(self, request):
+        """
+        Mark multiple messages as read in one request.
+        Body: {"message_ids": [1, 2, 3]}
+        """
+        ids = request.data.get("message_ids", [])
+        if not isinstance(ids, list) or not ids:
+            return Response(
+                {"detail": "Provide a non-empty list of message_ids."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        updated = (
+            Message.objects.filter(
+                id__in=ids,
+                chat__members__user=request.user,
+            )
+            .exclude(is_read=True)
+            .update(is_read=True)
+        )
+        return Response({"updated": updated})
+
     def destroy(self, request, *args, **kwargs):
         message = self.get_object()
 
