@@ -9,8 +9,6 @@ fi
 echo "=== Starting containers ==="
 bash scripts/run.sh
 
-echo "=== Creating and applying database migrations ==="
-docker compose exec web bash scripts/migrate.sh
 
 echo "=== Running tests + pushing to GitHub ==="
 git add .
