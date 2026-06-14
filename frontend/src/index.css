@@ -1,0 +1,89 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-primary:   #111b21;
+  --bg-secondary: #202c33;
+  --bg-hover:     #2a3942;
+  --bg-input:     #2a3942;
+  --bg-message-out: #005c4b;
+  --bg-message-in:  #202c33;
+  --bg-panel:     #0d1117;
+
+  --accent:       #00a884;
+  --accent-hover: #02b890;
+  --accent-light: #00a88420;
+
+  --text-primary:   #e9edef;
+  --text-secondary: #8696a0;
+  --text-muted:     #667781;
+  --text-on-accent: #111b21;
+
+  --border:       #2a3942;
+  --border-light: #1f2c34;
+
+  --danger:       #f15c6d;
+  --online:       #00a884;
+
+  --radius-sm:  6px;
+  --radius-md:  12px;
+  --radius-lg:  18px;
+  --radius-xl:  24px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+
+  --font: 'Inter', system-ui, sans-serif;
+  --transition: 150ms ease;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font);
+  color: inherit;
+}
+
+input, textarea {
+  font-family: var(--font);
+  outline: none;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+}
+
+a { text-decoration: none; color: inherit; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.fade-in  { animation: fadeIn  200ms ease forwards; }
+.slide-in { animation: slideIn 200ms ease forwards; }

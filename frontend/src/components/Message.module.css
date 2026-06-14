@@ -1,0 +1,95 @@
+.row {
+  display: flex;
+  flex-direction: column;
+  max-width: 68%;
+  position: relative;
+}
+
+.own {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.other {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.senderLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 3px;
+  padding-left: 4px;
+}
+
+.bubble {
+  position: relative;
+  padding: 7px 12px 6px;
+  border-radius: var(--radius-lg);
+  max-width: 100%;
+  word-break: break-word;
+  box-shadow: var(--shadow-sm);
+}
+
+.bubbleOut {
+  background: var(--bg-message-out);
+  border-bottom-right-radius: var(--radius-sm);
+  color: #e9edef;
+}
+
+.bubbleIn {
+  background: var(--bg-message-in);
+  border-bottom-left-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+.content {
+  font-size: 14.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 3px;
+}
+
+.time {
+  font-size: 11px;
+  color: rgba(233, 237, 239, 0.6);
+}
+
+.bubbleIn .time {
+  color: var(--text-muted);
+}
+
+.readTick {
+  display: flex;
+  align-items: center;
+}
+
+.deleteBtn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.row:hover .deleteBtn {
+  opacity: 1;
+}
