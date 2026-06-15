@@ -45,6 +45,30 @@ class ChatViewSet(viewsets.ModelViewSet):
             .distinct()
         )
 
+    def create(self, request, *args, **kwargs):
+        """Override create to return existing private chat if one already exists."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        member_ids = list(serializer.validated_data.get("member_ids", []))
+        is_group = serializer.validated_data.get("is_group", False)
+
+        # For private chats, check if a chat between these two users already exists
+        if not is_group and len(member_ids) == 1:
+            other_user_id = member_ids[0]
+            existing = (
+                Chat.objects.filter(is_group=False, members__user=request.user)
+                .filter(members__user_id=other_user_id)
+                .first()
+            )
+            if existing:
+                out = self.get_serializer(existing)
+                return Response(out.data, status=status.HTTP_200_OK)
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     @transaction.atomic
     def perform_create(self, serializer):
         member_ids = serializer.validated_data.pop("member_ids", [])

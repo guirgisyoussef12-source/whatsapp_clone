@@ -3,7 +3,7 @@ import { api } from '../services/api'
 import Avatar from './Avatar'
 import styles from './NewChatModal.module.css'
 
-export default function NewChatModal({ onClose, onCreated }) {
+export default function NewChatModal({ chats = [], onClose, onCreated }) {
   const [tab, setTab] = useState('private')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -44,6 +44,16 @@ export default function NewChatModal({ onClose, onCreated }) {
     setLoading(true)
     setError('')
     try {
+      // Check if a private chat with this user already exists locally
+      const existing = chats.find(
+        (c) =>
+          !c.is_group &&
+          c.members?.some((m) => m.user.id === selectedUser.id)
+      )
+      if (existing) {
+        onCreated(existing)
+        return
+      }
       const chat = await api.createChat({
         is_group: false,
         member_ids: [selectedUser.id],

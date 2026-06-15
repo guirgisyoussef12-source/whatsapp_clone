@@ -54,7 +54,6 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
       // onMessage — received from server (confirmed + saved in DB)
       (msg) => {
         setMessages((prev) => {
-          // Remove all temp/optimistic messages and the message if it already exists (by id)
           const filtered = prev.filter((m) => !m._temp && m.id !== msg.id)
           return [...filtered, msg]
         })
@@ -102,7 +101,6 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
     setInput('')
     setSending(true)
 
-    // Optimistic update — show message immediately in UI
     const tempId = `temp_${Date.now()}`
     const optimistic = {
       id: tempId,
@@ -117,19 +115,15 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
 
     try {
       if (wsReady && socketRef.current?.ws?.readyState === WebSocket.OPEN) {
-        // Send via WebSocket — server will broadcast back the real message
         socketRef.current.send(text)
       } else {
-        // Fallback: send via REST API if WebSocket isn't ready
         const saved = await api.sendMessage(chatId, text)
-        // Replace optimistic with real message
         setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)))
         onChatsRefresh()
       }
     } catch {
-      // Remove optimistic on failure
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
-      setInput(text) // restore text
+      setInput(text)
     } finally {
       setSending(false)
       inputRef.current?.focus()
@@ -154,10 +148,18 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
       .catch(() => {})
   }
 
-  if (!chat && !loading) {
+  // Chat not in list yet (someone started a new conversation with us).
+  // Trigger a refresh so the sidebar picks it up, then wait.
+  useEffect(() => {
+    if (!chat && !loading) {
+      onChatsRefresh()
+    }
+  }, [chat, loading])
+
+  if (!chat) {
     return (
       <div className={styles.notFound}>
-        <p>Chat not found.</p>
+        <p>Loading chat…</p>
       </div>
     )
   }

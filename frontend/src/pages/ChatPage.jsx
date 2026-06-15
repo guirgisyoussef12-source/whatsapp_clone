@@ -23,7 +23,12 @@ export default function ChatPage() {
     }
   }
 
-  useEffect(() => { fetchChats() }, [])
+  useEffect(() => {
+    fetchChats()
+    // Poll every 5 seconds to pick up new chats started by others
+    const interval = setInterval(fetchChats, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   const onChatCreated = (chat) => {
     setChats((prev) => [chat, ...prev.filter((c) => c.id !== chat.id)])
@@ -61,6 +66,7 @@ export default function ChatPage() {
 
       {showNewChat && (
         <NewChatModal
+          chats={chats}
           onClose={() => setShowNewChat(false)}
           onCreated={onChatCreated}
         />
