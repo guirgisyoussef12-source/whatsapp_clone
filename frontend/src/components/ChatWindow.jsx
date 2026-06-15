@@ -54,9 +54,9 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
       // onMessage — received from server (confirmed + saved in DB)
       (msg) => {
         setMessages((prev) => {
-          // Replace optimistic message (temp id) or add new one
-          const withoutTemp = prev.filter((m) => m._temp !== msg.id && m.id !== msg.id)
-          return [...withoutTemp, msg]
+          // Remove all temp/optimistic messages and the message if it already exists (by id)
+          const filtered = prev.filter((m) => !m._temp && m.id !== msg.id)
+          return [...filtered, msg]
         })
         onChatsRefresh()
       },

@@ -34,6 +34,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """Persist message to DB and return serialized data."""
         chat = Chat.objects.get(id=chat_id)
         message = Message.objects.create(chat=chat, sender=user, content=content)
+        # Mark as from WebSocket to avoid double broadcasting
+        message._from_websocket = True
         # Update chat.updated_at so the chat list re-sorts correctly
         chat.save(update_fields=["updated_at"])
         return MessageSerializer(message).data
