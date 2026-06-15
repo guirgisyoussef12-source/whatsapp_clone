@@ -6,12 +6,13 @@ function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function Message({ msg, isOwn, showAvatar, onDelete }) {
+export default function Message({ msg, isOwn, isTemp, showAvatar, onDelete }) {
   const [hover, setHover] = useState(false)
 
   return (
     <div
       className={`${styles.row} ${isOwn ? styles.own : styles.other} fade-in`}
+      style={isTemp ? { opacity: 0.6 } : {}}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >

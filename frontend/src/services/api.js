@@ -65,6 +65,7 @@ export const api = {
     return res
   },
   me: () => request('GET', '/auth/me/'),
+  searchUsers: (username) => request('GET', `/auth/users/?username=${encodeURIComponent(username)}`),
 
   // Chats
   getChats: () => request('GET', '/chat/chats/'),

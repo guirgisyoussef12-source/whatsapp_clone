@@ -1,42 +1,53 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { api } from '../services/api'
+import Avatar from './Avatar'
 import styles from './NewChatModal.module.css'
 
 export default function NewChatModal({ onClose, onCreated }) {
-  const [tab, setTab] = useState('private') // 'private' | 'group'
-  const [username, setUsername] = useState('')
+  const [tab, setTab] = useState('private')
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [selectedUser, setSelectedUser] = useState(null)
   const [groupName, setGroupName] = useState('')
-  const [groupMembers, setGroupMembers] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const searchTimer = useRef(null)
 
-  const resolveUserIds = async (usernamesStr) => {
-    // We'll use the chats list to find user IDs by creating a temp approach
-    // Since the backend doesn't have a user-search endpoint, we create the chat
-    // with member_ids. For now we use a simple approach via the register endpoint
-    // to surface a friendly error.
-    // In a real app you'd add GET /api/users/?search= endpoint.
-    const names = usernamesStr.split(',').map((s) => s.trim()).filter(Boolean)
-    if (names.length === 0) throw new Error('Enter at least one username.')
-    // Return names as-is; backend will validate member_ids
-    return names
+  // Live user search with debounce
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); return }
+    clearTimeout(searchTimer.current)
+    setSearching(true)
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const users = await api.searchUsers(query)
+        setResults(users)
+      } catch {
+        setResults([])
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+    return () => clearTimeout(searchTimer.current)
+  }, [query])
+
+  const resetSearch = () => {
+    setQuery('')
+    setResults([])
+    setSelectedUser(null)
+    setError('')
   }
 
   const createPrivate = async () => {
-    if (!username.trim()) { setError('Enter a username.'); return }
+    if (!selectedUser) { setError('Search and select a user first.'); return }
     setLoading(true)
     setError('')
     try {
-      // We need the user_id. Since there's no search endpoint, we create
-      // a private chat with member username lookup via a helper:
       const chat = await api.createChat({
         is_group: false,
-        member_usernames: [username.trim()], // backend ignores this gracefully
-        member_ids: [],                       // will be empty; see note below
+        member_ids: [selectedUser.id],
       })
-      // NOTE: Your backend uses member_ids not usernames.
-      // Ideally add GET /api/users/?username= to your Django backend.
-      // For now this creates a chat without the other member.
       onCreated(chat)
     } catch (err) {
       setError(err?.detail || JSON.stringify(err))
@@ -53,7 +64,7 @@ export default function NewChatModal({ onClose, onCreated }) {
       const chat = await api.createChat({
         is_group: true,
         name: groupName.trim(),
-        member_ids: [],
+        member_ids: selectedUser ? [selectedUser.id] : [],
       })
       onCreated(chat)
     } catch (err) {
@@ -80,36 +91,18 @@ export default function NewChatModal({ onClose, onCreated }) {
         <div className={styles.tabs}>
           <button
             className={`${styles.tab} ${tab === 'private' ? styles.tabActive : ''}`}
-            onClick={() => { setTab('private'); setError('') }}
-          >
-            Private
-          </button>
+            onClick={() => { setTab('private'); resetSearch() }}
+          >Private</button>
           <button
             className={`${styles.tab} ${tab === 'group' ? styles.tabActive : ''}`}
-            onClick={() => { setTab('group'); setError('') }}
-          >
-            Group
-          </button>
+            onClick={() => { setTab('group'); resetSearch() }}
+          >Group</button>
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
 
-        {tab === 'private' ? (
-          <div className={styles.body}>
-            <p className={styles.hint}>
-              💡 To add members by ID, ask your backend developer to add a user-search endpoint.
-            </p>
-            <div className={styles.field}>
-              <label>Username (for reference)</label>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. ahmed"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className={styles.body}>
+        <div className={styles.body}>
+          {tab === 'group' && (
             <div className={styles.field}>
               <label>Group name</label>
               <input
@@ -118,12 +111,57 @@ export default function NewChatModal({ onClose, onCreated }) {
                 placeholder="e.g. Team Alpha"
               />
             </div>
+          )}
+
+          {/* User search */}
+          <div className={styles.field}>
+            <label>{tab === 'private' ? 'Find user' : 'Add member (optional)'}</label>
+
+            {selectedUser ? (
+              <div className={styles.selectedUser}>
+                <Avatar name={selectedUser.username} size={32} />
+                <span>{selectedUser.username}</span>
+                <button className={styles.removeUser} onClick={resetSearch}>✕</button>
+              </div>
+            ) : (
+              <>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Type a username to search…"
+                  autoComplete="off"
+                />
+                {(results.length > 0 || searching) && (
+                  <div className={styles.dropdown}>
+                    {searching && <div className={styles.dropdownItem} style={{ color: 'var(--text-muted)' }}>Searching…</div>}
+                    {!searching && results.length === 0 && (
+                      <div className={styles.dropdownItem} style={{ color: 'var(--text-muted)' }}>No users found</div>
+                    )}
+                    {results.map((u) => (
+                      <button
+                        key={u.id}
+                        className={styles.dropdownItem}
+                        onClick={() => { setSelectedUser(u); setQuery(''); setResults([]) }}
+                      >
+                        <Avatar name={u.username} size={28} />
+                        <span>{u.username}</span>
+                        <span className={styles.userEmail}>{u.email}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         <div className={styles.footer}>
           <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
-          <button className={styles.createBtn} onClick={submit} disabled={loading}>
+          <button
+            className={styles.createBtn}
+            onClick={submit}
+            disabled={loading || (tab === 'private' && !selectedUser)}
+          >
             {loading ? 'Creating…' : 'Create'}
           </button>
         </div>

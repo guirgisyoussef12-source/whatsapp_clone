@@ -1,11 +1,11 @@
 export class ChatSocket {
-  constructor(chatId, onMessage, onTyping, onClose) {
+  constructor(chatId, onMessage, onTyping, onClose, onOpen) {
     this.chatId = chatId
     this.onMessage = onMessage
     this.onTyping = onTyping
     this.onClose = onClose
+    this.onOpen = onOpen
     this.ws = null
-    this.typingTimer = null
     this._connect()
   }
 
@@ -15,6 +15,10 @@ export class ChatSocket {
     const host = window.location.host
     this.ws = new WebSocket(`${protocol}://${host}/ws/chats/${this.chatId}/?token=${token}`)
 
+    this.ws.onopen = () => {
+      this.onOpen && this.onOpen()
+    }
+
     this.ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       if (data.type === 'message') this.onMessage(data.message)
@@ -22,7 +26,6 @@ export class ChatSocket {
     }
 
     this.ws.onclose = (e) => {
-      // 4001/4002/4003 = auth errors, don't retry
       if (e.code >= 4001 && e.code <= 4003) {
         this.onClose && this.onClose(e.code)
       }

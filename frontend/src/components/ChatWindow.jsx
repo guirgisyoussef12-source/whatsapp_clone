@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../services/api'
@@ -27,13 +27,14 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
   const [input, setInput] = useState('')
   const [typingUser, setTypingUser] = useState(null)
   const [sending, setSending] = useState(false)
+  const [wsReady, setWsReady] = useState(false)
 
   const socketRef = useRef(null)
   const bottomRef = useRef(null)
   const typingTimerRef = useRef(null)
   const inputRef = useRef(null)
 
-  // Load messages
+  // Load messages from REST
   useEffect(() => {
     setLoading(true)
     setMessages([])
@@ -46,14 +47,16 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
   // WebSocket
   useEffect(() => {
     socketRef.current?.close()
+    setWsReady(false)
 
-    socketRef.current = new ChatSocket(
+    const socket = new ChatSocket(
       chatId,
-      // onMessage
+      // onMessage — received from server (confirmed + saved in DB)
       (msg) => {
         setMessages((prev) => {
-          if (prev.find((m) => m.id === msg.id)) return prev
-          return [...prev, msg]
+          // Replace optimistic message (temp id) or add new one
+          const withoutTemp = prev.filter((m) => m._temp !== msg.id && m.id !== msg.id)
+          return [...withoutTemp, msg]
         })
         onChatsRefresh()
       },
@@ -67,11 +70,15 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
       // onClose
       (code) => {
         if (code === 4003) navigate('/')
-      }
+      },
+      // onOpen
+      () => setWsReady(true)
     )
 
+    socketRef.current = socket
+
     return () => {
-      socketRef.current?.close()
+      socket.close()
       clearTimeout(typingTimerRef.current)
     }
   }, [chatId])
@@ -83,7 +90,9 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
 
   // Mark messages as read
   useEffect(() => {
-    const unread = messages.filter((m) => !m.is_read && m.sender?.id !== user?.id).map((m) => m.id)
+    const unread = messages
+      .filter((m) => !m.is_read && m.sender?.id !== user?.id)
+      .map((m) => m.id)
     if (unread.length > 0) api.markReadBulk(unread).catch(() => {})
   }, [messages])
 
@@ -92,8 +101,35 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
     if (!text || sending) return
     setInput('')
     setSending(true)
+
+    // Optimistic update — show message immediately in UI
+    const tempId = `temp_${Date.now()}`
+    const optimistic = {
+      id: tempId,
+      _temp: tempId,
+      content: text,
+      sender: user,
+      chat: Number(chatId),
+      created_at: new Date().toISOString(),
+      is_read: false,
+    }
+    setMessages((prev) => [...prev, optimistic])
+
     try {
-      socketRef.current?.send(text)
+      if (wsReady && socketRef.current?.ws?.readyState === WebSocket.OPEN) {
+        // Send via WebSocket — server will broadcast back the real message
+        socketRef.current.send(text)
+      } else {
+        // Fallback: send via REST API if WebSocket isn't ready
+        const saved = await api.sendMessage(chatId, text)
+        // Replace optimistic with real message
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)))
+        onChatsRefresh()
+      }
+    } catch {
+      // Remove optimistic on failure
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      setInput(text) // restore text
     } finally {
       setSending(false)
       inputRef.current?.focus()
@@ -143,6 +179,9 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
             )
           )}
         </div>
+        {!wsReady && (
+          <span className={styles.wsStatus}>Connecting…</span>
+        )}
       </div>
 
       {/* Messages */}
@@ -164,6 +203,7 @@ export default function ChatWindow({ chats, onChatUpdated, onChatsRefresh }) {
             key={msg.id}
             msg={msg}
             isOwn={msg.sender?.id === user?.id}
+            isTemp={!!msg._temp}
             showAvatar={
               !messages[i - 1] ||
               messages[i - 1].sender?.id !== msg.sender?.id
